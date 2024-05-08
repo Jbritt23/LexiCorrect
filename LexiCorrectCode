@@ -1,0 +1,72 @@
+import nltk
+nltk.download('brown')  
+from nltk.corpus import brown
+import string
+
+# function to get known words from brown corpus
+def get_known_words_from_brown():
+    # convert words to lowercase and stores them
+    known_words = set(word.lower() for word in brown.words())  
+    return known_words
+
+# function to calculate the similarity between two words
+def calculate_similarity(word1, word2):
+    # if both words are the same return the length of the world as the similarity score
+    if word1 == word2:
+        return len(word1)
+    score = 0
+    # if words are the same length increase score for matching chars
+    if len(word1) == len(word2):
+        for i in range(len(word1)):
+            if word1[i] == word2[i]:
+                score += 1
+    # checks for swapped characthers in the word, matching partial matches
+    for i in range(min(len(word1), len(word2)) - 1):
+        swapped_word = list(word1)
+        swapped_word[i], swapped_word[i+1] = swapped_word[i+1], swapped_word[i]
+        if "".join(swapped_word) == word2:
+            return len(word2) - 1
+    return score
+
+# suggest a word for the misspelled word
+def suggest_word(misspelled_word, known_words):
+    best_match = ""
+    highest_score = 0
+    # loops through each know word to find the most similar one to the misspelled word
+    for word in known_words:
+        score = calculate_similarity(misspelled_word, word)
+        if score > highest_score:
+            highest_score = score
+            best_match = word
+    return best_match if highest_score > 0 else None
+
+# removes punctuation from a word
+def remove_punctuation(word):
+    return word.translate(str.maketrans('', '', string.punctuation)).strip()
+
+#check spelling in a given file and write suggestion to an output file
+def check_spelling(input_file_path, output_file_path):
+    known_words = get_known_words_from_brown()
+    try:
+        with open(input_file_path, 'r', encoding='utf-8') as file:
+            content = file.read().lower() 
+    # uses this for chars that may not be supported by the systems default encoding espically non-ASCII
+    except UnicodeDecodeError:
+        with open(input_file_path, 'r', encoding='iso-8859-1') as file:
+            content = file.read().lower()
+    # split the content into words, removing punctuation and extra spaces
+    words_to_check = [remove_punctuation(word).strip() for word in content.split()]
+    # open the output file to write suggestions
+    with open(output_file_path, 'w', encoding='utf-8') as outfile:
+        for word in words_to_check:
+            if word and word not in known_words: # checks if word is not known
+                suggestion = suggest_word(word, known_words) # get suggestion for the not known word
+                if suggestion: # if suggestion found write it to the output file
+                    outfile.write(f"{word}: {suggestion}\n")
+
+# geta input file and output file paths from the user
+input_file_path = input("Enter the path to the input file: ")
+output_file_path = input("Enter the path to the output file: ")
+
+# runs the spell check using the files given from user
+check_spelling(input_file_path, output_file_path)
